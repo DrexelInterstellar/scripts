@@ -19,6 +19,7 @@ import numpy
 import os
 import platform
 import tkinter as tk
+from tkinter import ttk
 from tkinter.filedialog import askopenfilename, askdirectory
 
 
@@ -32,24 +33,23 @@ class App(tk.Frame):
 
     # Set up all script inputs in the Tkinter GUI
     def setup(self):
-        #self.parent.geometry("400x250")
         self.parent.title("GMAT Iterator")
         self.columnconfigure(1, minsize=250)
 
         tk.Button(self, text="Select script", command=self.set_file
-                 ).grid(row=0, column=0, pady=2, sticky="W")
+                  ).grid(row=0, column=0, pady=2, sticky="W")
         self.script_label = tk.Label(self, text="No script selected")
         self.script_label.grid(row=0, column=1, padx=2, pady=2, sticky="E")
 
         tk.Button(self, text="Select directory", command=self.set_cwd
-                 ).grid(row=1, column=0, pady=2, sticky="W")
+                  ).grid(row=1, column=0, pady=2, sticky="W")
         self.directory_label = tk.Label(self, text="No directory selected")
         self.directory_label.grid(row=1, column=1, padx=2, pady=2, sticky="E")
 
-        script_variables= ['Earth.ConstantThrust','ExampleVar']
+        variables = ['Earth.ConstantThrust','ExampleVar']
         self.script_variable = tk.StringVar()
-        self.script_variable.set(script_variables[0])
-        tk.OptionMenu(self, self.script_variable, *script_variables
+        self.script_variable.set(variables[0])
+        ttk.Combobox(self, values=variables, textvariable=self.script_variable
                      ).grid(row=2, column=0, columnspan=2, pady=2, sticky="W")
 
         # The %P parameter passes the value of text if the modification is allowed
@@ -59,25 +59,25 @@ class App(tk.Frame):
         self.start_variable = tk.DoubleVar()
         tk.Label(self, text="Start:").grid(row=3, column=0, padx=2, pady=2, sticky="W")
         tk.Entry(self, textvariable=self.start_variable, validate="key",
-                validatecommand=vcmd, width=15).grid(row=3, column=1, padx=2, pady=2, sticky="W")
-
-        self.step_variable = tk.DoubleVar()
-        tk.Label(self, text="Step:").grid(row=4, column=0, padx=2, pady=2, sticky="W")
-        tk.Entry(self, textvariable=self.step_variable, validate="key",
-                validatecommand=vcmd, width=15).grid(row=4, column=1, padx=2, pady=2, sticky="W")
+                 validatecommand=vcmd, width=15).grid(row=3, column=1, padx=2, pady=2, sticky="W")
 
         self.end_variable = tk.DoubleVar()
-        tk.Label(self, text="End:").grid(row=5, column=0, padx=2, pady=2, sticky="W")
+        tk.Label(self, text="End:").grid(row=4, column=0, padx=2, pady=2, sticky="W")
         tk.Entry(self, textvariable=self.end_variable, validate="key",
-                validatecommand=vcmd, width=15).grid(row=5, column=1, padx=2, pady=2, sticky="W")
+                 validatecommand=vcmd, width=15).grid(row=4, column=1, padx=2, pady=2, sticky="W")
+
+        self.step_variable = tk.DoubleVar()
+        tk.Label(self, text="Step:").grid(row=5, column=0, padx=2, pady=2, sticky="W")
+        tk.Entry(self, textvariable=self.step_variable, validate="key",
+                 validatecommand=vcmd, width=15).grid(row=5, column=1, padx=2, pady=2, sticky="W")
 
         tk.Button(self, text="Run", command=self.run).grid(row=6, column=0, pady=2, sticky="W")
         tk.Button(self, text="Exit", command=self.quit).grid(row=6, column=1, pady=2, sticky="W")
 
-    # Function used to validate text entry in the the GUI for start, end, and step values
+    # Function used to validate text entry in the GUI for start, end, and step values
     def validate(self, value_if_allowed, text):
         if text in '0123456789.-+':
-            if value_if_allowed == '':
+            if value_if_allowed in '-':
                 return True
             try:
                 float(value_if_allowed)
@@ -89,6 +89,7 @@ class App(tk.Frame):
     def set_file(self):
         self.script_file_name = askopenfilename()
         self.script_label["text"] = self.script_file_name
+        # Automatically set cwd to the same directory as the selected script
         self.cwd = "/".join(self.script_file_name.split("/")[:-1])
         self.directory_label["text"] = self.cwd
 
@@ -106,16 +107,17 @@ class App(tk.Frame):
         end = self.end_variable.get()
         step = self.step_variable.get()
         script_param = self.script_variable.get()
+        if not script_param:
+            print("Please select or enter a script variable to iterate.")
+            return
         if not start and not end:
             print("Please enter a non-zero start or stop value.")
             return
         if not step:
             print("Please enter a step value.")
             return
-        if not hasattr(self, 'cwd'):
-            self.cwd = os.getcwd()
 
-        # OS-aware code to get path of GMAT and relevant files required to run GMAT
+        # OS-aware code to get path of GMAT
         user_platform = platform.system()
         if (user_platform == "Windows"):
             current_user = os.getlogin()
@@ -139,6 +141,8 @@ class App(tk.Frame):
 
         for loopcounter in list(numpy.arange(start, end + step, step)):
             script_text = update_parameters(script_text, script_param, loopcounter)
+            if not script_text:
+                return
             script_text = update_parameters(script_text, filenameparam,
                                             "'" + output_file + str(filecounter) + ".txt'")
 
@@ -171,12 +175,12 @@ class App(tk.Frame):
 def update_parameters(content, param, param_value):
     pos = content.find(param)
     if (pos <= 0):
-        print("Error: unable to find given parameter")
-        return
+        print("Error: unable to find given parameter.")
+        return 0
     pos2 = content.find(";", pos)
     if (pos <= 0):
-        print("Error: GMAT script line not terminated with ;")
-        return
+        print("Error: GMAT script line not terminated with semi-colon.")
+        return 0
     return (content[:pos] + param + " = " + str(param_value) + content[pos2:])
 
 

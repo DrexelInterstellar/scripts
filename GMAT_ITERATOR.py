@@ -49,7 +49,7 @@ class App(tk.Frame):
         variables = ['Earth.ConstantThrust','ExampleVar']
         self.script_variable = tk.StringVar()
         self.script_variable.set(variables[0])
-        ttk.Combobox(self, values=variables, textvariable=self.script_variable
+        self.box = ttk.Combobox(self, values=variables, textvariable=self.script_variable
                      ).grid(row=2, column=0, columnspan=2, pady=2, sticky="W")
 
         # The %P parameter passes the value of text if the modification is allowed
@@ -92,6 +92,21 @@ class App(tk.Frame):
         # Automatically set cwd to the same directory as the selected script
         self.cwd = "/".join(self.script_file_name.split("/")[:-1])
         self.directory_label["text"] = self.cwd
+        self.find_parameters()
+
+    def find_parameters(self):
+        with open(self.script_file_name) as template_script_io:
+            temp_parameters = template_script_io.readlines()
+        #remove all elements that don't have an "=" or "GMAT" in them
+        self.parameters_text = [line for line in temp_parameters if "=" in line and "GMAT" in line]
+        for i in range(0,len(self.parameters_text)):
+            line = self.parameters_text[i]
+            self.parameters_text[i] = line[4:line.find("=") - 1]
+        self.script_variable = tk.StringVar()
+        self.script_variable.set(self.parameters_text[0])
+        self.box = ttk.Combobox(self, values=self.parameters_text, textvariable=self.script_variable
+                               ).grid(row=2, column=0, columnspan=2, pady=2, sticky="W")
+
 
     def set_cwd(self):
         self.cwd = askdirectory()
@@ -152,17 +167,17 @@ class App(tk.Frame):
             run_gmat(self.temp_script_file_name, self.gmat_location, loopcounter)
             filecounter += 1
 
-        for file in range(1, filecounter):
-            with open(output_file + str(file) + ".txt", 'r') as fh:
-                if file == 1:
-                    first = fh.readline()
-                    data = ','.join(first.split()) + '\n'
-                    output_summary_io.write(data)
+        #for file in range(1, filecounter):
+        #    with open(output_file + str(file) + ".txt", 'r') as fh:
+        #        if file == 1:
+        #            first = fh.readline()
+        #            data = ','.join(first.split()) + '\n'
+        #            output_summary_io.write(data)
 
-                for last in fh:
-                    pass
-                data = ','.join(last.split()) + '\n'
-                output_summary_io.write(data)
+        #        for last in fh:
+        #            pass
+        #        data = ','.join(last.split()) + '\n'
+        #        output_summary_io.write(data)
 
         output_summary_io.close()
         os.remove(self.temp_script_file_name)
@@ -188,7 +203,7 @@ def update_parameters(content, param, param_value):
 # Prints status to terminal.
 def run_gmat(file_name, GMAT, iteration):
     print("Running GMAT with iteration #" + str(iteration) + " " + file_name)
-    subprocess.call(GMAT + " --run --exit --minimize " + file_name)
+    #subprocess.call(GMAT + " --run --exit --minimize " + file_name)
 
 
 def main():
